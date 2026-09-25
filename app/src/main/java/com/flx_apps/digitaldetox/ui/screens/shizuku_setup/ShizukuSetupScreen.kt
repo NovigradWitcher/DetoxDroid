@@ -71,7 +71,8 @@ fun ShizukuSetupScreen(
     }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text(stringResource(id = R.string.shizukuSetup_title)) },
+        TopAppBar(
+            title = { Text(stringResource(id = R.string.shizukuSetup_title)) },
             navigationIcon = {
                 IconButton(onClick = { navViewModel.onBackPress() }) {
                     Icon(
@@ -264,8 +265,9 @@ private fun WizardStep(
 }
 
 private fun openShizukuPlayStorePage(context: Context) {
+    val SHIZUKU_PACKAGE_NAME = "moe.shizuku.privileged.api"
     val playIntent = Intent(
-        Intent.ACTION_VIEW, Uri.parse("market://details?id=${ShizukuUtils.SHIZUKU_PACKAGE_NAME}")
+        Intent.ACTION_VIEW, Uri.parse("market://details?id=$SHIZUKU_PACKAGE_NAME")
     ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
     runCatching { context.startActivity(playIntent) }.onFailure {
         // no Play Store — fall back to the browser (which may be missing too on exotic setups)
@@ -273,16 +275,17 @@ private fun openShizukuPlayStorePage(context: Context) {
             context.startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=${ShizukuUtils.SHIZUKU_PACKAGE_NAME}")
+                    Uri.parse("https://play.google.com/store/apps/details?id=$SHIZUKU_PACKAGE_NAME")
                 ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
         }
     }
 }
 
 private fun openShizukuApp(context: Context) {
-    // the manager package is the legacy install variant that isShizukuInstalled also accepts
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(
-        ShizukuUtils.SHIZUKU_PACKAGE_NAME
-    ) ?: context.packageManager.getLaunchIntentForPackage(ShizukuUtils.SHIZUKU_MANAGER_PACKAGE_NAME)
-    launchIntent?.let { runCatching { context.startActivity(it) } }
+    val shizukuPackageName = ShizukuUtils.getShizukuPackageName() ?: return
+    val launchIntent = context.packageManager
+        .getLaunchIntentForPackage(shizukuPackageName)
+    launchIntent?.let {
+        runCatching { context.startActivity(it) }
+    }
 }

@@ -6,6 +6,8 @@ import com.flx_apps.digitaldetox.DetoxDroidApplication
 import moe.shizuku.server.IShizukuService
 import rikka.shizuku.Shizuku
 import timber.log.Timber
+import rikka.shizuku.ShizukuProvider
+import android.content.pm.PermissionInfo
 
 /**
  * Utility class for working with Shizuku service to execute privileged commands without root.
@@ -16,32 +18,29 @@ import timber.log.Timber
  */
 object ShizukuUtils {
     private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
-    const val SHIZUKU_PACKAGE_NAME = "moe.shizuku.privileged.api"
-
-    /** The legacy "Shizuku Manager" package name some installs still use. */
-    const val SHIZUKU_MANAGER_PACKAGE_NAME = "moe.shizuku.manager"
 
     /**
-     * Checks if the Shizuku app is installed (regardless of whether its service is running).
+     * Checks if the Shizuku permission is present.
+     * This works regardless of the package name used by the Shizuku app.
      */
-    fun isShizukuInstalled(): Boolean {
-        return try {
+    fun shizukuPermission(): PermissionInfo? {
+        return runCatching {
             val packageManager = DetoxDroidApplication.appContext.packageManager
-            packageManager.getPackageInfo(SHIZUKU_PACKAGE_NAME, 0)
-            true
-        } catch (_: PackageManager.NameNotFoundException) {
-            // Also try the manager package
-            try {
-                val packageManager = DetoxDroidApplication.appContext.packageManager
-                packageManager.getPackageInfo(SHIZUKU_MANAGER_PACKAGE_NAME, 0)
-                true
-            } catch (_: PackageManager.NameNotFoundException) {
-                false
-            }
-        } catch (_: Exception) {
-            false
-        }
+            packageManager.getPermissionInfo(ShizukuProvider.PERMISSION, 0)
+        }.getOrNull()
     }
+
+    /**
+     * Returns the package name of the installed Shizuku provider
+     */
+    fun getShizukuPackageName() =
+        shizukuPermission()?.packageName
+
+    /**
+     * Checks if the Shizuku app is installed (by verifying the presence of it's permission).
+     */
+    fun isShizukuInstalled() =
+        shizukuPermission() != null
 
     /**
      * Checks if Shizuku is available and permission is granted.
