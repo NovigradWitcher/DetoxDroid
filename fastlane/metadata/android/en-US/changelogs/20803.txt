@@ -1,0 +1,8 @@
+### Release v2.8.3
+
+✨ New Features
+- refactor Shizuku detection to work with forks
+
+🐛 Bug Fixes
+- add write permission to token in actions
+- fix references to ShizukuUtils functions
