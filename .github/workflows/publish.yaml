@@ -8,6 +8,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -63,14 +66,14 @@ jobs:
           # Get the latest tag
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "Latest tag: $latest_tag"
-          
+
           # Parse semantic version
           latest_version=${latest_tag#v}
           IFS='.' read -r major minor patch <<< "$latest_version"
-          
+
           # Default bump type based on conventional commits
           bump_type="patch"  # Default to patch
-          
+
           # Check for force bump input
           if [ -n "${{ github.event.inputs.force-bump }}" ]; then
             bump_type="${{ github.event.inputs.force-bump }}"
@@ -88,7 +91,7 @@ jobs:
               bump_type="minor"
             fi
           fi
-          
+
           # Increment version based on bump type
           if [ "$bump_type" = "patch" ]; then
             patch=$((patch + 1))
@@ -100,16 +103,16 @@ jobs:
             minor=0
             patch=0
           fi
-          
+
           # Calculate version code (e.g., 10203 for 1.2.3)
           version_code=$((major * 10000 + minor * 100 + patch))
-          
+
           # Set outputs
           new_version="$major.$minor.$patch"
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
           echo "VERSION_CODE=$version_code" >> $GITHUB_ENV
           echo "BUMP_TYPE=$bump_type" >> $GITHUB_ENV
-          
+
           echo "New version: v$new_version"
           echo "Version code: $version_code"
           echo "Bump type: $bump_type"
@@ -125,25 +128,25 @@ jobs:
             echo "Could not find build.gradle file"
             exit 1
           fi
-          
+
           # For Kotlin DSL
           if grep -q "versionName =" "$GRADLE_FILE"; then
             sed -i "s/versionName = .*/versionName = \"$NEW_VERSION\"/" "$GRADLE_FILE"
             sed -i "s/versionCode = .*/versionCode = $VERSION_CODE/" "$GRADLE_FILE"
-          
+
           # For Groovy DSL
           elif grep -q "versionCode" "$GRADLE_FILE"; then
             sed -i "s/versionCode .*/versionCode $VERSION_CODE/" "$GRADLE_FILE"
             sed -i "s/versionName .*/versionName \"$NEW_VERSION\"/" "$GRADLE_FILE"
           fi
-          
+
           cat "$GRADLE_FILE"
 
       - name: Generate changelog
         run: |
           # Determine the range for changelog
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
+
           if [ -z "$latest_tag" ]; then
             # First release - use all commits
             git_range="HEAD"
@@ -151,9 +154,9 @@ jobs:
             # Use commits since last tag
             git_range="$latest_tag..HEAD"
           fi
-          
+
           echo "Generating changelog based on commits in $git_range"
-          
+
           # the full notes go into the GitHub release, F-Droid gets them trimmed in the next step
           changelog_file="$RUNNER_TEMP/release-notes.md"
           conventional_lines=$(
@@ -161,10 +164,10 @@ jobs:
               | sed -E 's/^[[:space:]]*[-*][[:space:]]*//' \
               | sed -E 's/^[[:space:]]+//'
           )
-          
+
           echo "### Release v$NEW_VERSION" > "$changelog_file"
           echo "" >> "$changelog_file"
-          
+
           # Handle Breaking Changes
           breaking_changes=$(echo "$conventional_lines" | grep -E '^BREAKING CHANGE:|^(feat|fix)(\([^)]*\))?!:' | sed -E 's/^BREAKING CHANGE:[[:space:]]*/- /; s/^(feat|fix)(\([^)]*\))?!:[[:space:]]*/- /' | awk '!seen[$0]++' || true)
           if [ -n "$breaking_changes" ]; then
@@ -172,7 +175,7 @@ jobs:
             echo "$breaking_changes" >> "$changelog_file"
             echo "" >> "$changelog_file"
           fi
-          
+
           # Handle Features
           features=$(echo "$conventional_lines" | grep -E '^feat(\([^)]*\))?:' | sed -E 's/^feat(\([^)]*\))?:[[:space:]]*/- /' | awk '!seen[$0]++' || true)
           if [ -n "$features" ]; then
@@ -180,7 +183,7 @@ jobs:
             echo "$features" >> "$changelog_file"
             echo "" >> "$changelog_file"
           fi
-          
+
           # Handle Bug Fixes
           fixes=$(echo "$conventional_lines" | grep -E '^fix(\([^)]*\))?:' | sed -E 's/^fix(\([^)]*\))?:[[:space:]]*/- /' | awk '!seen[$0]++' || true)
           if [ -n "$fixes" ]; then
@@ -188,7 +191,7 @@ jobs:
             echo "$fixes" >> "$changelog_file"
             echo "" >> "$changelog_file"
           fi
-          
+
           # Show the changelog
           cat "$changelog_file"
 
